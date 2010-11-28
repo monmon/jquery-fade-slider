@@ -1,0 +1,359 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <style type="text/css">
+html,
+body,
+div,
+img{
+    margin: 0;
+    padding: 0;
+}
+body {
+    background: #141518 url(background.jpg) no-repeat fixed center top;
+}
+#wrapper {
+    overflow: hidden;
+    position: absolute;
+    width: 100%; /* 実際の画像の数分のwidthになる */
+    height: 100%; /* absoluteで作っているので、heightがないと高さ0になり見えない */
+}
+#main {
+    width:820px; /* オリジナル画像の横サイズ */
+    position:absolute;
+}
+#left,
+#right {
+    height: 100%;
+    width:253px;
+    position:absolute;
+}
+#left {
+    background-image:url(left.png);
+    left: 0;
+}
+#right {
+    background-image:url(right.png);
+    right: 0;
+}
+
+#captures {
+    position: absolute;
+    left: 50%;
+
+    width: 50000px;  /* 目一杯大きく */
+
+    /* org 画像の高さ - small 画像の高さ / 2 の半分 */
+    padding-top: 182px;
+    padding-bottom: 182px;
+
+    /*
+    margin-left: -410px;
+    */
+}
+div.capture {
+    display: inline;
+    margin: 200px 10px;
+    position: relative;
+}
+div.box {
+    display: inline;
+    position: relative;
+}
+img.org {
+    position: absolute;
+    left: 0;
+    display: none;
+    z-index: 100;
+}
+/* JavaScript で設定
+div.active {
+    padding: 0 200px;
+    position: relative;
+}
+div.active img.org {
+    margin: -200px -270px 0;
+    position: absolute;
+    left: 0;
+    display: inline;
+    z-index: 100;
+}
+*/
+        </style>
+        <script type="text/javascript" src="jquery-1.4.4.js"></script>
+        <script type="text/javascript" src="js/jquery.easing.1.3.js"></script>
+        <script type="text/javascript" src="js/jquery.mousewheel.js"></script>
+        <script type="text/javascript">
+$(function() {
+    /*
+       <div id="captures">
+         <div class="capture">
+           <div class="box">
+            <img class="org" src="">
+            <img class="small" src="">
+           </div>
+         </div>
+         ...
+       </div>
+       */
+    new function() {
+
+        // private
+        var activeMargin = '+100px';
+        var duration = 300;
+        var easing = 'easeOutQuint';
+
+        var $active = $('div.capture:first'); // スライドした後にアクティブdivを保持したい
+        var activeMarginTop = $active.css('margin-top'); // active化するときに上にずらすので保持;
+
+        var $activeOrgImg = $active.find('img.org');
+        var orgSize = {
+            width: 820,
+            height: 547
+        };
+
+        var $activeSmallImg = $active.find('img.small');
+        var smallSize = {
+            width: $activeSmallImg.attr('width'),
+            height: $activeSmallImg.attr('height')
+        };
+
+
+        var activationPadding = '200px';
+        // 帳尻合わせ
+        var inactivationTop = -168;
+        //var activationTop = 400;
+        var activationTop = 160; // (org - small)/2 より少し小さく
+        var activationLeft = 274;
+        var activationDivStyle = {
+            paddingTop: '0',
+            paddingLeft: activationPadding,
+            paddingRight: activationPadding
+        };
+        var activationImgStyle = {
+            //top: '-' + activationTop,
+            marginTop: '-' + activationTop,
+            left: '-' + activationLeft,
+              //margin: '-' + activeMarginTop + ' -' + activationPadding + ' 0'
+            opacity: 1,
+            width: orgSize.width + 'px',
+            height: orgSize.height + 'px'
+        };
+
+        var inactivationDivStyle = {
+            // padding: 0だとトップとレフトに関係なくなるためアニメーションが起こらない
+            // なので、paddingTop, paddingLeft, paddingRightと分ける
+            paddingTop: '0',
+            paddingLeft: '0',
+            paddingRight: '0'
+        };
+        var inactivationImgStyle = {
+            // margin: 0だとトップとレフトに関係なくなるためアニメーションが起こらない
+            // なので、marginTop, marginLeftと分ける
+            marginTop: '0',
+            //marginLeft: '0',
+            //top: inactivationTop,
+            left: 0,
+
+            //display: 'none',
+            opacity: 0,
+            width: smallSize.width + 'px',
+            height: smallSize.height + 'px'
+        };
+
+        // initialize
+        $active
+            .animate(activationDivStyle, 0)
+            .parent().css({
+                // leftで50%（センター）にしてあるので、
+                // marginまで含んだactiveの半分だけずらす
+                marginLeft: -($active.outerWidth(true) / 2) + 'px'
+            });
+        $activeOrgImg.animate(activationImgStyle, 0).show();
+        $('div img.small')
+            .animate({opacity: 0.9}, 0);
+        $('div.capture img.org').not($activeOrgImg)
+            .attr({
+                'width': smallSize.width,
+                'height': smallSize.height
+            }).css({
+                //top: inactivationTop
+            })
+            .animate({opacity: 0.5}, 0);
+        $('div.capture div.box').css({
+            width: smallSize.width + 'px',
+            height: smallSize.height + 'px'
+        });
+
+        var fadeOut = function(isPrev) {
+            $active
+                .find('img.org')
+                    .animate(inactivationImgStyle, duration, function(){
+                        $(this).hide();
+                    });
+        }
+            
+        var fadeIn = function(isPrev) {
+            var $targetDiv = (isPrev) ? $active.prev() : $active.next();
+
+            $targetDiv
+                .find('img.org')
+                    .css({display: 'inline'})
+                    .animate(activationImgStyle, duration, easing);
+        }
+            
+            
+        var move = function(isPrev) {
+            var direction = '-';
+            var $targetDiv = $active.next();
+            if (isPrev) {
+                direction = '+';
+                $targetDiv =  $active.prev();
+            }
+        
+            $targetDiv.animate(activationDivStyle, duration, easing);
+            $active.animate(inactivationDivStyle, duration, easing);
+        
+            $('#captures').animate({
+                marginLeft: direction + '=' + $targetDiv.outerWidth(true) + 'px'
+            }, duration, easing, function() {
+                $active = $targetDiv;
+            });
+        };
+
+        // 最後まで処理できればtrue
+        var isValid = function($active, dir) {
+            var $target = $active[dir]()
+            if ($target.length === 0) return false;
+
+            var queue = $('#captures').queue('fx');
+            if (queue.length !== 0) return false;
+
+            return true;
+        };
+    
+
+        mySlider = {
+            // debug
+            _fadeOut: fadeOut,
+            _fadeIn: fadeIn,
+            _move: move,
+            _active: function() {
+                return $active;
+            },
+
+            // 最後に$activeを変える
+            prev: function() {
+                if (isValid($active, 'prev')) {
+                    fadeOut(true);
+                    fadeIn(true);
+                    move(true);
+                }
+            },
+            next: function() {
+                if (isValid($active, 'next')) {
+                    fadeOut();
+                    fadeIn();
+                    move();
+                }
+            }
+        };
+    };
+
+
+    $('#right')
+        .click(function(event) { 
+            //console.log('next at %s', Date.now());
+            mySlider.next();
+            return false;
+        });
+    $('#left')
+        .click(function(event) {
+            //console.log('prev at %s', Date.now());
+            mySlider.prev();
+            return false;
+        });
+
+
+    $('#wrapper')
+        .bind('mousewheel', function(event, delta) {
+            var isUp = (delta > 0) ? true : false;
+
+            if (isUp) {
+                $('#message').text('Up at a velocity of ' + delta);
+                $('#left').click();
+            }
+            else {
+                $('#message').text('Down at a velocity of ' + delta);
+                $('#right').click();
+            }
+
+            return false;
+        });
+
+    $('button').one('click', function(){
+            $('#main')
+            .add('#left')
+            .add('#right')
+            .add('body')
+            .css({
+                zIndex: -1,
+                background: '#fff'
+            });
+    });
+
+});
+        </script>
+    </head>
+    <body>
+<div id="wrapper">
+   <div id="captures">
+     <div class="capture">
+       <div class="box">
+         <img class="small" src="images/small/a.jpg" width="264" height="183">
+         <img class="org" src="images/org/a.jpg">
+       </div>
+     </div>
+
+     <div class="capture">
+       <div class="box">
+         <img class="small" src="images/small/b.jpg" width="264" height="183">
+         <img class="org" src="images/org/b.jpg">
+       </div>
+     </div>
+
+     <div class="capture">
+       <div class="box">
+         <img class="small" src="images/small/c.jpg" width="264" height="183">
+         <img class="org" src="images/org/c.jpg">
+       </div>
+     </div>
+     <div class="capture">
+       <div class="box">
+         <img class="small" src="images/small/d.jpg" width="264" height="183">
+         <img class="org" src="images/org/d.jpg">
+       </div>
+     </div>
+     <div class="capture">
+       <div class="box">
+         <img class="small" src="images/small/e.jpg" width="264" height="183">
+         <img class="org" src="images/org/e.jpg">
+       </div>
+     </div>
+
+   </div>
+    <div id="main"></div>
+    <div id="left"></div>
+    <div id="right"></div>
+</div>
+
+<div style="position: absolute; top: 0; left: 0; background:#FFFFFF none repeat scroll 0 0;">
+    <div id="message">
+    message
+    </div>
+    <button>
+        背景を削除
+    </button>
+</div>
+    </body>
+</html>
